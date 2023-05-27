@@ -4,10 +4,12 @@ function generate_modulefile()
 {
   OPT_PKG="/opt/pkg"
   OUTPUT_FILE="output_modulefile.tcl"
+  DOIT=""
+  SILENT=""
 
   function log()
   {
-    echo -e "\x1B[1m-- $1:\x1B[0m $2"
+    [[ -z ${SILENT} ]] && echo -e "\x1B[1m-- $1:\x1B[0m $2"
   }
 
   function error()
@@ -17,12 +19,12 @@ function generate_modulefile()
 
   function warning()
   {
-    echo -e "\x1B[33;1m-- $1:\x1B[0m $2"
+    [[ -z ${SILENT} ]] && echo -e "\x1B[33;1m-- $1:\x1B[0m $2"
   }
 
   function success()
   {
-    echo -e "\x1B[32;1m-- $1:\x1B[0m $2"
+    [[ -z ${SILENT} ]] && echo -e "\x1B[32;1m-- $1:\x1B[0m $2"
   }
 
   function usage()
@@ -41,6 +43,8 @@ function generate_modulefile()
     echo "Optional arguments:"
     echo "  --prefix           Installed package path"
     echo "                     (Default: /opt/pkg/<package>/<package>_<version>)"
+    echo "  --doit             Move output modulefile to ${OPT_PKG}/modulefiles"
+    echo "  --silent           Turn off verbose logging"
     echo ""
     echo "Optional relative paths appended to prefix"
     echo "  --bindir=<path>         (Default: bin)"
@@ -61,6 +65,8 @@ function generate_modulefile()
   PACKAGE_CMAKE=""
   PACKAGE_PKGCONFIG=""
   PACKAGE_MANPATH=""
+
+  OPTION_PARSE_ERROR=""
 
   for opt do
     optval="${opt#*=}"
@@ -113,8 +119,22 @@ function generate_modulefile()
       --help)
         usage && exit 0
       ;;
+      --doit)
+        DOIT="DOIT"
+      ;;
+      --silent)
+        SILENT="SILENT"
+      ;;
+      *)
+        OPTION_PARSE_ERROR="ERROR"
+        error "Did not recognize argument" "'${optval}'"
+      ;;
     esac
   done
+
+  if [[ -n "${OPTION_PARSE_ERROR}" ]]; then
+    exit 1
+  fi
 
   if [[ -z "${PACKAGE_NAME}" ]]; then
     error "Missing package name" "set with '--package=<name>'"
@@ -127,13 +147,12 @@ function generate_modulefile()
   fi
 
   if [[ -z "${PACKAGE_PREFIX}" ]]; then
-    PACKAGE_PREFIX="${OPT_PKG}/${PACKAGE_NAME}/${PACKAGE_NAME}-${PACKAGE_VERSION}"
+    PACKAGE_PREFIX="${OPT_PKG}/${PACKAGE_NAME}/${PACKAGE_NAME}_${PACKAGE_VERSION}"
     log "Set default prefix path" "use --prefix=<path> if incorrect"
   fi
 
   if [[ ! -d "${OPT_PKG}/${PACKAGE_NAME}/modulefiles" ]]; then
-    error "Missing modulefiles directory" "mkdir ${OPT_PKG}/${PACKAGE_NAME}/modulefiles"
-    exit 1
+    log "No package-specific modulefiles directory" "mkdir ${OPT_PKG}/${PACKAGE_NAME}/modulefiles"
   fi
 
   if [[ ! -d "${PACKAGE_PREFIX}" ]]; then
@@ -151,68 +170,91 @@ function generate_modulefile()
 
 set prefix ${PACKAGE_PREFIX}
 
+EOF
+
+  [[ -n ${PACKAGE_BIN} ]] && cat << EOF >> ${OUTPUT_FILE}
 set bindir \$prefix/${PACKAGE_BIN}
+EOF
+
+  [[ -n ${PACKAGE_LIB} ]] && cat << EOF >> ${OUTPUT_FILE}
 set libdir \$prefix/${PACKAGE_LIB}
+EOF
+
+  [[ -n ${PACKAGE_INCLUDE} ]] && cat << EOF >> ${OUTPUT_FILE}
 set incdir \$prefix/${PACKAGE_INCLUDE}
+EOF
+
+  cat << EOF >> ${OUTPUT_FILE}
 
 EOF
 
-[[ -n ${PACKAGE_BIN} ]] && cat << EOF >> ${OUTPUT_FILE}
+  [[ -n ${PACKAGE_BIN} ]] && cat << EOF >> ${OUTPUT_FILE}
 prepend-path PATH            \$bindir
 EOF
 
-[[ -n ${PACKAGE_LIB} ]] && cat << EOF >> ${OUTPUT_FILE}
+  [[ -n ${PACKAGE_LIB} ]] && cat << EOF >> ${OUTPUT_FILE}
 prepend-path LIBRARY_PATH    \$libdir
 prepend-path LD_LIBRARY_PATH \$libdir
 EOF
 
-[[ -n ${PACKAGE_INCLUDE} ]] && cat << EOF >> ${OUTPUT_FILE}
+  [[ -n ${PACKAGE_INCLUDE} ]] && cat << EOF >> ${OUTPUT_FILE}
 prepend-path CPATH           \$incdir
 EOF
 
-cat << EOF >> ${OUTPUT_FILE}
+  cat << EOF >> ${OUTPUT_FILE}
 
 EOF
 
-[[ -n ${PACKAGE_CMAKE} ]] && cat << EOF >> ${OUTPUT_FILE}
+  [[ -n ${PACKAGE_CMAKE} ]] && cat << EOF >> ${OUTPUT_FILE}
 prepend-path CMAKE_PREFIX_PATH  ${PACKAGE_CMAKE}
 EOF
 
-[[ -n ${PACKAGE_PKGCONFIG} ]] && cat << EOF >> ${OUTPUT_FILE}
+  [[ -n ${PACKAGE_PKGCONFIG} ]] && cat << EOF >> ${OUTPUT_FILE}
 prepend-path PKG_CONFIG_PATH    ${PACKAGE_PKGCONFIG}
 EOF
 
-[[ -n ${PACKAGE_MANPATH} ]] && cat << EOF >> ${OUTPUT_FILE}
+  [[ -n ${PACKAGE_MANPATH} ]] && cat << EOF >> ${OUTPUT_FILE}
 prepend-path MANPATH            ${PACKAGE_MANPATH}
 EOF
 
-cat << EOF >> ${OUTPUT_FILE}
+  cat << EOF >> ${OUTPUT_FILE}
 
 conflict ${PACKAGE_NAME}
 
 EOF
 
-  log "Dumping contents of:" "$(realpath ${OUTPUT_FILE})"
-  echo "---------------------------------"
-  cat ${OUTPUT_FILE}
-  echo "---------------EOF---------------"
+  if [[ -z "${DOIT}" ]]; then
+    log "Dumping contents of:" "$(realpath ${OUTPUT_FILE})"
+    echo "---------------------------------"
+    cat ${OUTPUT_FILE}
+    echo "---------------EOF---------------"
+  fi
 
   NEW_MODULEFILE="${PACKAGE_NAME}/${PACKAGE_VERSION}"
   
   SPECIFIC_PACKAGE_MODULEFILES="${OPT_PKG}/${PACKAGE_NAME}/modulefiles/${NEW_MODULEFILE}"
   ALL_PACKAGES_MODULEFILES="${OPT_PKG}/modulefiles/${NEW_MODULEFILE}"
     
+  [[ ! -d ${OPT_PKG}/modulefiles/${PACKAGE_NAME} ]] \
+    && log "INFO" "mkdir ${OPT_PKG}/modulefiles/${PACKAGE_NAME}"
+
+  [[ ! -d ${OPT_PKG}/${PACKAGE_NAME}/modulefiles/${PACKAGE_NAME} ]] \
+    && log "INFO" "mkdir ${OPT_PKG}/${PACKAGE_NAME}/modulefiles/${PACKAGE_NAME}"
+
   [[ -f ${SPECIFIC_PACKAGE_MODULEFILES} ]] \
     && warning "Module file installed" "${SPECIFIC_PACKAGE_MODULEFILES}"
     
   [[ -f ${ALL_PACKAGES_MODULEFILES} ]] \
     && warning "Module file installed" "${ALL_PACKAGES_MODULEFILES}"
 
-  success "Call one of the following commands if OK"
-  echo "sudo mv ${OUTPUT_FILE} ${SPECIFIC_PACKAGE_MODULEFILES}"
-  echo ""
-  echo "sudo mv ${OUTPUT_FILE} ${ALL_PACKAGES_MODULEFILES}"
-  echo ""
+  if [[ -z ${DOIT} ]]; then
+    success "Call one of the following commands if OK"
+    log "" "sudo mv ${OUTPUT_FILE} ${SPECIFIC_PACKAGE_MODULEFILES}"
+    log "" "sudo mv ${OUTPUT_FILE} ${ALL_PACKAGES_MODULEFILES}"
+  else
+    log "Installing" "${ALL_PACKAGES_MODULEFILES}"
+    mv "${OUTPUT_FILE}" "${ALL_PACKAGES_MODULEFILES}"
+  fi
 
   log "$(basename "$0")" "Done"
 
