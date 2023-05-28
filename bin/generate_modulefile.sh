@@ -198,7 +198,8 @@ prepend-path LD_LIBRARY_PATH \$libdir
 EOF
 
   [[ -n ${PACKAGE_INCLUDE} ]] && cat << EOF >> ${OUTPUT_FILE}
-prepend-path CPATH           \$incdir
+prepend-path CPLUS_INCLUDE_PATH   \$incdir
+prepend-path C_INCLUDE_PATH       \$incdir
 EOF
 
   cat << EOF >> ${OUTPUT_FILE}
