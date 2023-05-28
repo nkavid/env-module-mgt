@@ -70,7 +70,7 @@ function generate_modulefile()
 
   for opt do
     optval="${opt#*=}"
-    case "$opt" in
+    case "${opt}" in
       --prefix=*)
         PACKAGE_PREFIX=${optval}
       ;;
@@ -164,7 +164,7 @@ function generate_modulefile()
     success "Found installed package" "${PACKAGE_PREFIX}"
   fi
 
-  cat > ${OUTPUT_FILE} << EOF
+  cat > "${OUTPUT_FILE}" << EOF
 #%Module
 # ${PACKAGE_NAME} modulefile
 
@@ -172,62 +172,62 @@ set prefix ${PACKAGE_PREFIX}
 
 EOF
 
-  [[ -n ${PACKAGE_BIN} ]] && cat << EOF >> ${OUTPUT_FILE}
+  [[ -n ${PACKAGE_BIN} ]] && cat << EOF >> "${OUTPUT_FILE}"
 set bindir \$prefix/${PACKAGE_BIN}
 EOF
 
-  [[ -n ${PACKAGE_LIB} ]] && cat << EOF >> ${OUTPUT_FILE}
+  [[ -n ${PACKAGE_LIB} ]] && cat << EOF >> "${OUTPUT_FILE}"
 set libdir \$prefix/${PACKAGE_LIB}
 EOF
 
-  [[ -n ${PACKAGE_INCLUDE} ]] && cat << EOF >> ${OUTPUT_FILE}
+  [[ -n ${PACKAGE_INCLUDE} ]] && cat << EOF >> "${OUTPUT_FILE}"
 set incdir \$prefix/${PACKAGE_INCLUDE}
 EOF
 
-  cat << EOF >> ${OUTPUT_FILE}
+  cat << EOF >> "${OUTPUT_FILE}"
 
 EOF
 
-  [[ -n ${PACKAGE_BIN} ]] && cat << EOF >> ${OUTPUT_FILE}
+  [[ -n ${PACKAGE_BIN} ]] && cat << EOF >> "${OUTPUT_FILE}"
 prepend-path PATH            \$bindir
 EOF
 
-  [[ -n ${PACKAGE_LIB} ]] && cat << EOF >> ${OUTPUT_FILE}
+  [[ -n ${PACKAGE_LIB} ]] && cat << EOF >> "${OUTPUT_FILE}"
 prepend-path LIBRARY_PATH    \$libdir
 prepend-path LD_LIBRARY_PATH \$libdir
 EOF
 
-  [[ -n ${PACKAGE_INCLUDE} ]] && cat << EOF >> ${OUTPUT_FILE}
+  [[ -n ${PACKAGE_INCLUDE} ]] && cat << EOF >> "${OUTPUT_FILE}"
 prepend-path CPLUS_INCLUDE_PATH   \$incdir
 prepend-path C_INCLUDE_PATH       \$incdir
 EOF
 
-  cat << EOF >> ${OUTPUT_FILE}
+  cat << EOF >> "${OUTPUT_FILE}"
 
 EOF
 
-  [[ -n ${PACKAGE_CMAKE} ]] && cat << EOF >> ${OUTPUT_FILE}
+  [[ -n ${PACKAGE_CMAKE} ]] && cat << EOF >> "${OUTPUT_FILE}"
 prepend-path CMAKE_PREFIX_PATH  ${PACKAGE_CMAKE}
 EOF
 
-  [[ -n ${PACKAGE_PKGCONFIG} ]] && cat << EOF >> ${OUTPUT_FILE}
+  [[ -n ${PACKAGE_PKGCONFIG} ]] && cat << EOF >> "${OUTPUT_FILE}"
 prepend-path PKG_CONFIG_PATH    ${PACKAGE_PKGCONFIG}
 EOF
 
-  [[ -n ${PACKAGE_MANPATH} ]] && cat << EOF >> ${OUTPUT_FILE}
+  [[ -n ${PACKAGE_MANPATH} ]] && cat << EOF >> "${OUTPUT_FILE}"
 prepend-path MANPATH            ${PACKAGE_MANPATH}
 EOF
 
-  cat << EOF >> ${OUTPUT_FILE}
+  cat << EOF >> "${OUTPUT_FILE}"
 
 conflict ${PACKAGE_NAME}
 
 EOF
 
   if [[ -z "${DOIT}" ]]; then
-    log "Dumping contents of:" "$(realpath ${OUTPUT_FILE})"
+    log "Dumping contents of:" "$(realpath "${OUTPUT_FILE}" || true)"
     echo "---------------------------------"
-    cat ${OUTPUT_FILE}
+    cat "${OUTPUT_FILE}"
     echo "---------------EOF---------------"
   fi
 
